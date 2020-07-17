@@ -1,0 +1,190 @@
+name: make-release
+on:
+  push:
+    branches: [master]
+  pull_request: {}
+  release:
+    types: [created]
+jobs:
+  make-release:
+    name: ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - 'x64'
+        os:
+          - 'ubuntu-18.04'
+          - 'windows-2019'
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name:  Download
+        shell: bash
+        run:   |
+          mkdir -p "$HOME"/{downloads,extracts,deps/Debug,deps/Release}
+          
+          curl -o "$HOME/downloads/spdlog.zip"     -L https://github.com/gabime/spdlog/archive/v1.3.1.zip
+          curl -o "$HOME/downloads/asio.zip"       -L https://github.com/chriskohlhoff/asio/archive/asio-1-13-0.zip
+          curl -o "$HOME/downloads/json.zip"       -L https://github.com/nlohmann/json/releases/download/v3.8.0/include.zip
+          curl -o "$HOME/downloads/valijson.zip"   -L https://github.com/tristanpenman/valijson/archive/v0.3.zip
+          curl -o "$HOME/downloads/catch.zip"      -L https://github.com/catchorg/Catch2/archive/v1.5.6.zip
+          curl -o "$HOME/downloads/googletest.zip" -L https://github.com/google/googletest/archive/release-1.10.0.zip
+          
+          if [ "${{ runner.os }}" == "Windows" ] ; then
+            curl -o "$HOME/downloads/openssl.zip"       -L https://github.com/openssl/openssl/archive/OpenSSL_1_1_1g.zip
+            curl -o "$HOME/downloads/curl.zip"          -L https://github.com/curl/curl/archive/curl-7_60_0.zip
+            curl -o "$HOME/downloads/xerces-c.zip"      -L https://github.com/apache/xerces-c/archive/v3.2.2.zip
+            curl -o "$HOME/downloads/perl.zip"          -L http://strawberryperl.com/download/5.30.2.1/strawberry-perl-5.30.2.1-64bit-portable.zip
+            curl -o "$HOME/downloads/vc_redist.x64.exe" -L https://aka.ms/vs/16/release/vc_redist.x64.exe
+            curl -o "$HOME/downloads/vswhere.exe"       -L https://github.com/microsoft/vswhere/releases/download/2.8.4/vswhere.exe
+          fi
+      
+      - name:  Prepare
+        shell: bash
+        run:   |
+          deps=(spdlog asio json valijson catch googletest)
+          if [ "${{ runner.os }}" == "Windows" ] ; then
+            deps+=(openssl curl xerces-c perl)
+          fi
+          
+          for i in "${deps[@]}" ; do
+            mkdir -p "$HOME/extracts/$i"
+            unzip -q "$HOME/downloads/$i.zip" -d "$HOME/extracts/$i"
+          done
+          
+          if [ "${{ runner.os }}" == "Windows" ] ; then
+            cp -Rfa "$HOME/downloads/vc_redist.x64.exe" "$HOME/deps/$variant/."
+            cat > "$HOME/os-conf.bash" <<\EOF
+          osConf=(-G "Visual Studio 16 2019" -A "${{ matrix.arch }}")
+          EOF
+          else
+            cat > "$HOME/os-conf.bash" <<\EOF
+          osConf=()
+          EOF
+          fi
+      
+      - name:  Build Asynchronous IO Support
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            cd "$HOME/extracts/asio"/asio*
+            mkdir -p "$HOME/deps/$variant/include"
+            cp -Rfa ./asio/include/* "$HOME/deps/$variant/include/."
+          done
+      
+      - name:  Build JSON Support
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            cd "$HOME/extracts/json"
+            cp -Rfa ./single_include/nlohmann/json.hpp "$HOME/deps/$variant/include/."
+            
+            cd "$HOME/extracts/valijson"/valijson*
+            cp -Rfa ./include/{valijson,compat} "$HOME/deps/$variant/include/."
+          done
+      
+      - name:  Build Logging Support
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            cd "$HOME/extracts/spdlog"/spdlog*
+            rm -Rf build || true
+            mkdir build ; cd build
+            cmake .. "${osConf[@]}" -D "CMAKE_BUILD_TYPE=${variant}" -D "CMAKE_INSTALL_PREFIX=$HOME/deps/$variant" -D "SPDLOG_BUILD_TESTS=OFF" -D "SPDLOG_BUILD_BENCH=OFF" -D "SPDLOG_BUILD_EXAMPLES=OFF" 
+            cmake --build . --config "${variant}" --target install --clean-first
+          done
+      
+      - name:  Build Testing Support
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            cd "$HOME/extracts/catch"/Catch*
+            cp -Rfa ./single_include/catch.hpp "$HOME/deps/$variant/include/."
+            
+            cd "$HOME/extracts/googletest"/googletest*
+            rm -Rf build || true
+            mkdir build ; cd build
+            cmake .. "${osConf[@]}" -D "CMAKE_INSTALL_PREFIX=$HOME/deps/$variant"
+            cmake --build . --config "${variant}" --target install --clean-first
+          done
+      
+      - name:  Build SSL Support
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            vcPath=`$HOME/downloads/vswhere.exe -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`
+            
+            cd "$HOME/extracts/openssl"/openssl*
+            rm -Rf build || true
+            mkdir build ; cd build
+            cat > build.bat <<EOF
+          call "${vcPath}/VC/Auxiliary/Build/vcvars32.bat" x64
+          %HOME%/extracts/perl/perl/bin/perl.exe ../Configure VC-WIN64A-masm no-shared no-makedepend --prefix=%HOME%/deps/${variant} && nmake install
+          EOF
+            ./build.bat
+          done
+      
+      - name:  Build HTTP Support
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            cd "$HOME/extracts/curl"/curl*
+            rm -Rf build || true
+            mkdir build ; cd build
+            cmake .. "${osConf[@]}" -D "CMAKE_BUILD_TYPE=${variant}" -Wno-dev -D "CMAKE_INSTALL_PREFIX=$HOME/deps/$variant" -D "CMAKE_USE_OPENSSL=ON" -D "CURL_STATICLIB=ON" -D "HTTP_ONLY=ON" -D "BUILD_TESTING=OFF"
+            cmake --build . --config "${variant}" --target install --clean-first
+          done
+      
+      - name:  Build XML Support
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run:   |
+          source "$HOME/os-conf.bash"
+          for variant in Release Debug ; do
+            cd "$HOME/extracts/xerces-c"/xerces-c*
+            rm -Rf build || true
+            mkdir build ; cd build
+            cmake .. "${osConf[@]}" -D "CMAKE_BUILD_TYPE=${variant}" -D "CMAKE_INSTALL_PREFIX=$HOME/deps/$variant" -D "BUILD_SHARED_LIBS=OFF"
+            cmake --build . --config "${variant}" --target install --clean-first
+          done
+      
+      - name:  Removing Extra Files
+        shell: bash
+        run:   |
+          for variant in Release Debug ; do
+            rm -Rf "$HOME/deps/$variant/bin" || true
+          done
+      
+      - name:  Creating Zip
+        shell: bash
+        run:   |
+          DEPS_ZIP="$PWD/deps.zip"
+          
+          cd "$HOME"
+          if [ "${{ runner.os }}" == "Windows" ] ; then
+            powershell -Command Compress-Archive -CompressionLevel Optimal -DestinationPath "$DEPS_ZIP" -Path deps
+          else
+            zip -9 -r "$DEPS_ZIP" deps
+          fi
+          
+      
+      - name: Upload Release Asset
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: deps.zip
+          asset_name: "plaid-deps_${{ matrix.os }}_${{ matrix.arch }}.zip"
+          asset_content_type: application/zip
