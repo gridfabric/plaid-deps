@@ -110,7 +110,7 @@ jobs:
             cd "$HOME/extracts/googletest"/googletest*
             rm -Rf build || true
             mkdir build ; cd build
-            cmake .. "${osConf[@]}" -D "CMAKE_INSTALL_PREFIX=$HOME/deps/$variant"
+            cmake .. "${osConf[@]}" -D "CMAKE_INSTALL_PREFIX=$HOME/deps/$variant" -D "gtest_build_samples=0" -D "gtest_force_shared_crt=1"
             cmake --build . --config "${variant}" --target install --clean-first
           done
       
