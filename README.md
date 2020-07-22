@@ -6,8 +6,8 @@
 Automated builds of the Plaid dependencies are generated with this repository.
 Please download the dependency bundle for your development environment from:
 
-- [Windows 64-bit](https://github.com/gridfabric/plaid-deps/releases/latest/download/plaid-deps_windows-2019_x64.zip)
-- [Linux 64-bit](https://github.com/gridfabric/plaid-deps/releases/latest/download/plaid-deps_ubuntu-18.04_x64.zip)
+- [Windows 64-bit](https://github.com/gridfabric/plaid-deps/releases/latest/download/plaid-deps_Windows_x64.zip)
+- [Linux 64-bit](https://github.com/gridfabric/plaid-deps/releases/latest/download/plaid-deps_Linux_x64.zip)
 
 Further documentation on using the bundle is online at: https://plaid-docs.gridfabric.io/
 

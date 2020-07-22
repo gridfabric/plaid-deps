@@ -176,7 +176,6 @@ jobs:
           else
             zip -9 -r "$DEPS_ZIP" deps
           fi
-          
       
       - name: Upload Release Asset
         if: ${{ github.event_name == 'release' }}
@@ -186,5 +185,5 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: deps.zip
-          asset_name: "plaid-deps_${{ matrix.os }}_${{ matrix.arch }}.zip"
+          asset_name: "plaid-deps_${{ runner.os }}_${{ matrix.arch }}.zip"
           asset_content_type: application/zip
