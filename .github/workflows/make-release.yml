@@ -15,7 +15,7 @@ jobs:
         arch:
           - 'x64'
         os:
-          - 'ubuntu-18.04'
+          - 'ubuntu-24.04'
           - 'windows-2019'
     steps:
       - uses: actions/checkout@v2
@@ -25,12 +25,12 @@ jobs:
         run:   |
           mkdir -p "$HOME"/{downloads,extracts,deps/Debug,deps/Release}
           
-          curl -o "$HOME/downloads/spdlog.zip"     -L https://github.com/gabime/spdlog/archive/v1.3.1.zip
+          curl -o "$HOME/downloads/spdlog.zip"     -L https://github.com/gabime/spdlog/archive/v1.16.0.zip
           curl -o "$HOME/downloads/asio.zip"       -L https://github.com/chriskohlhoff/asio/archive/asio-1-13-0.zip
           curl -o "$HOME/downloads/json.zip"       -L https://github.com/nlohmann/json/releases/download/v3.8.0/include.zip
           curl -o "$HOME/downloads/valijson.zip"   -L https://github.com/tristanpenman/valijson/archive/v0.3.zip
           curl -o "$HOME/downloads/catch.zip"      -L https://github.com/catchorg/Catch2/archive/v1.5.6.zip
-          curl -o "$HOME/downloads/googletest.zip" -L https://github.com/google/googletest/archive/release-1.10.0.zip
+          curl -o "$HOME/downloads/googletest.zip" -L https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
           
           if [ "${{ runner.os }}" == "Windows" ] ; then
             curl -o "$HOME/downloads/openssl.zip"       -L https://github.com/openssl/openssl/archive/OpenSSL_1_1_1g.zip

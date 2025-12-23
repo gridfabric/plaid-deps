@@ -13,12 +13,12 @@ Further documentation on using the bundle is online at: https://plaid-docs.gridf
 
 Dependencies included are:
 
-- [spdlog C++ Logging Library](https://github.com/gabime/spdlog) v1.3.1
+- [spdlog C++ Logging Library](https://github.com/gabime/spdlog) v1.16.0
 - [Asio C++ Library](https://github.com/chriskohlhoff/asio) v1.13.0
 - [JSON for Modern C++](https://github.com/nlohmann/json) v3.8.0
 - [Valijson JSON Schema Validation Library](https://github.com/tristanpenman/valijson) v0.3
 - [Catch2 C++ Testing Framework](https://github.com/catchorg/Catch2) v1.5.6
-- [Google Test C++ Testing Framework](https://github.com/google/googletest) v1.10.0
+- [Google Test C++ Testing Framework](https://github.com/google/googletest) v1.14.0
 
 Additional dependencies provide for Windows are:
 
